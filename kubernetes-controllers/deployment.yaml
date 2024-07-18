@@ -4,12 +4,14 @@ metadata:
   name: nginx-deployment
   labels:
     app: web-server
+  namespace: homework
 spec:
   replicas: 3
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 1
+      maxSurge: 1
   selector:
     matchLabels:
       app: web-server
@@ -18,21 +20,30 @@ spec:
       labels:
         app: web-server
     spec:
+      nodeSelector:
+        homework: "true"
       containers:
       - name: nginx
         image: nginx:1.27.0
         ports:
         - containerPort: 8000
         lifecycle:
-        preStop:
+          preStop:
+            exec:
+              command: ["rm", "/homework/index.html"]
+        readinessProbe:
           exec:
-            command: ["rm", "/homework/index.html"]
-      volumeMounts:
-      - name: workdir
-        mountPath: /homework
-      - mountPath: /etc/nginx
-        readOnly: true
-        name: nginx-conf
+            command:
+            - stat
+            - /homework/index.html
+          initialDelaySeconds: 3
+          periodSeconds: 5
+        volumeMounts:
+        - name: workdir
+          mountPath: /homework
+        - mountPath: /etc/nginx
+          readOnly: true
+          name: nginx-conf
       initContainers:
       - name: init
         image: busybox:1.36
@@ -41,15 +52,15 @@ spec:
         - "-O"
         - "/init/index.html"
         - http://info.cern.ch
-      volumeMounts:
-      - name: workdir
-        mountPath: "/init"
+        volumeMounts:
+        - name: workdir
+          mountPath: "/init"
       volumes:
       - name: workdir
         emptyDir: {}
       - name: nginx-conf
         configMap:
           name: nginx-conf
-            items:
-            - key: nginx.conf
-              path: nginx.conf
+          items:
+          - key: nginx.conf
+            path: nginx.conf
