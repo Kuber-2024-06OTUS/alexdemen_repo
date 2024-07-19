@@ -27,15 +27,15 @@ spec:
         image: nginx:1.27.0
         ports:
         - containerPort: 8000
+          name: http
         lifecycle:
           preStop:
             exec:
               command: ["rm", "/homework/index.html"]
         readinessProbe:
-          exec:
-            command:
-            - stat
-            - /homework/index.html
+          httpGet:
+            path: /index.html
+            port: 8000
           initialDelaySeconds: 3
           periodSeconds: 5
         volumeMounts:
